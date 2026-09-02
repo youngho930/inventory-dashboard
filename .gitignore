@@ -1,0 +1,16 @@
+# 자격증명
+.env
+
+# 파이썬
+__pycache__/
+*.pyc
+venv/
+.venv/
+
+# 실제 운영 데이터가 재유입되지 않도록 차단
+uploads/*
+!uploads/.gitkeep
+
+# 편집기
+.vscode/
+.idea/

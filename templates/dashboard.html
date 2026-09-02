@@ -1,0 +1,883 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>PANAXTOS Inventory System</title>
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#4361ee">
+    <link rel="apple-touch-icon" href="/static/logo.png">
+
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+    <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
+    <link rel="preload" as="style" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.8/dist/web/static/pretendard.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.8/dist/web/static/pretendard.css" />
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+
+    <script defer src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.5.1/dist/confetti.browser.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script defer src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script> 
+    
+    <link rel="stylesheet" href="/static/css/style.css">
+
+    <style>
+        /* 💡 모든 테이블 레이아웃 및 짤림 방지 공통 설정 */
+        .table-container table { table-layout: auto !important; width: 100%; min-width: 0; }
+        .table-container { transform: translateZ(0); will-change: transform; -webkit-overflow-scrolling: touch; overflow-x: auto !important; background: #fff !important; }
+        .table-container td { word-break: keep-all; }
+        .table-container tr { transform: none !important; transition: background-color 0.2s ease !important; width: 100% !important; }
+        .table-container tbody tr:hover { transform: none !important; box-shadow: none !important; }
+
+        html, body, .main-content { overflow-y: scroll !important; }
+
+        .dashboard-split { align-items: flex-start !important; }
+        .dashboard-split > div { 
+            height: auto !important; 
+            min-height: 550px !important; 
+            max-height: none !important;
+            overflow: visible !important; 
+            padding-bottom: 30px !important; 
+        }
+        .cal-grid { margin-bottom: 30px !important; }
+
+        /* 🚀 PC 버전: KPI 이미지 큼직하게 우측 하단 고정 및 왼쪽 둥근 선 처리 */
+        .kpi-card, .kpi-header { overflow: visible !important; }
+        
+        .kpi-card::before { display: none !important; } /* 기존 삐져나오던 가짜 선 제거 */
+        .kpi-card {
+            border-left-width: 5px !important;
+            border-left-style: solid !important;
+            border-left-color: var(--primary) !important;
+        }
+
+        .kpi-card img {
+            width: 80px !important; 
+            height: 80px !important; 
+            object-fit: contain !important; 
+            transform: scale(2.2) !important; 
+            transform-origin: right bottom !important; 
+            background: transparent !important; 
+            z-index: 10 !important; 
+            position: absolute !important; 
+            bottom: 10px !important; 
+            right: -5px !important;
+        }
+
+        /* 📱 모바일 버전 대응 */
+        @media screen and (max-width: 768px) {
+            .table-container { overflow-x: auto !important; display: block !important; width: 100% !important; -webkit-overflow-scrolling: touch; padding-bottom: 10px; }
+            .table-container table { min-width: 800px !important; }
+            
+            .toolbar { flex-direction: column !important; align-items: flex-start !important; gap: 10px !important; }
+            .toolbar > div { flex-wrap: wrap !important; width: 100% !important; gap: 8px !important; }
+            .search-wrapper { width: 100% !important; margin: 0 !important; }
+            .toolbar input, .toolbar select { flex: 1; min-width: 120px; }
+            
+            .kpi-container { grid-template-columns: 1fr 1fr !important; gap: 10px !important; }
+            .dashboard-split { flex-direction: column !important; gap: 15px !important; }
+            #miniKpiSection { flex-direction: column !important; gap: 10px !important; }
+            
+            .modal { width: 95% !important; padding: 15px !important; max-height: 85vh !important; overflow-y: auto !important; }
+            .modal > div[style*="display:flex"] { flex-wrap: wrap !important; }
+            
+            .main-content { padding: 10px !important; }
+            .page-section { padding: 5px !important; }
+            .header-title h1 { font-size: 18px !important; }
+
+            .table-container table th,
+            .table-container table td {
+                position: static !important; 
+                left: auto !important;
+                z-index: auto !important;
+            }
+
+            /* 📱 모바일 버전: KPI 이미지 얌전하게 축소 */
+            .kpi-card img {
+                width: 45px !important;
+                height: 45px !important;
+                transform: scale(1.6) !important;
+                bottom: 8px !important;
+                right: 2px !important;
+            }
+        }
+/* =======================================================
+       💡 삭제 경고창 무조건 최상단 노출 (캐시 무시 강제 적용)
+       ======================================================= */
+    body > div.swal2-container.swal2-center.swal2-backdrop-show {
+        z-index: 999999999 !important; /* 압도적으로 높은 우선순위 부여 */
+        position: fixed !important;
+    }
+    </style>
+</head>
+<body>
+
+    <datalist id="inventoryDatalist"></datalist>
+    <datalist id="archiveTitleList"></datalist>
+    <div id="topProgressBar"></div>
+
+    <div class="layout-wrapper">
+        <div class="sidebar">
+            <div class="mobile-header" style="justify-content: flex-end;">
+                <div style="display:flex; gap:15px; align-items:center;">
+                    <button style="background:none; border:none; color:white; font-size:18px; cursor:pointer;" onclick="document.getElementById('globalSearchModal').style.display='flex'; setTimeout(()=>document.getElementById('globalSearchInput').focus(), 100);"><i class="fa-solid fa-magnifying-glass"></i></button>
+                    <button style="background:none; border:none; color:white; font-size:22px; cursor:pointer;" onclick="toggleMobileMenu()"><i class="fa-solid fa-bars"></i></button>
+                </div>
+            </div>
+            
+            <div class="logo" onclick="clickLogoEasterEgg()">
+                <img src="/static/logo.png" alt="Logo" onerror="this.style.display='none'">
+            </div>
+            
+            <div class="d-day-widget" id="dDayWidget"><div class="d-day-title">📅 D-Day</div></div>
+            
+            <ul class="menu" id="mainMenu">
+                <li class="menu-item active" onclick="switchPage('dashboard', this)"><i class="fa-solid fa-chart-pie"></i> 메인</li>
+                <li class="menu-item" onclick="switchPage('inventory', this)"><i class="fa-solid fa-boxes-stacked"></i> 재고 현황 조회</li>
+                <li class="menu-item" onclick="switchPage('incoming', this)" style="display:none;"><i class="fa-solid fa-truck-ramp-box"></i> 입고 내역</li>
+                <li class="menu-item" onclick="switchPage('supplier', this); loadSupplierData();"><i class="fa-solid fa-handshake"></i> 협력업체(구매처) 연락망</li>
+                <li class="menu-item" onclick="switchPage('history', this)"><i class="fa-solid fa-clock-rotate-left"></i> 생산 내역</li>
+                <li class="menu-item" id="menuProdMain" onclick="toggleSubmenu('prodSubmenu')"><i class="fa-solid fa-industry"></i> 생산 관리(BOM) <i class="fa-solid fa-chevron-down" style="font-size:12px; margin-left:auto;"></i></li>
+                <ul class="submenu" id="prodSubmenu">
+                    <li class="submenu-item" onclick="clickProdMenu('production', this)">제품 단가</li>
+                    <li class="submenu-item" onclick="clickProdMenu('part_price', this)">부속품 단가</li>
+                    <li class="submenu-item" onclick="clickProdMenu('bom_tree', this)">BOM 트리 조회</li> 
+                </ul>
+                <li class="menu-item" onclick="switchPage('archive', this)"><i class="fa-solid fa-folder-open"></i> 자료실</li>
+                <li class="menu-item" onclick="switchPage('board', this)"><i class="fa-solid fa-comments"></i> 소통 게시판</li>
+                <li class="menu-item" onclick="clickSettingsMenu(this)"><i class="fa-solid fa-gear"></i> 설정</li>
+            </ul>
+        </div>
+        
+        <div class="main-content">
+            <div class="header">
+                <div class="header-title"><h1>재고 관리 시스템</h1><div class="last-updated" id="lastUpdated">대기 중...</div></div>
+                <div class="header-controls">
+                    <button class="primary" id="btnAutoRefresh" onclick="toggleAutoRefreshState()" style="background:linear-gradient(135deg, var(--success), #2a9d8f);">
+                        <i class="fa-solid fa-rotate fa-spin"></i> <span>자동갱신 ON</span>
+                    </button>
+                </div>
+            </div>
+
+            <div class="news-ticker-container"><div class="news-ticker-content" id="newsTickerText">📢 시스템 로딩 중...</div></div>
+
+            <div class="featured-section" id="featuredSection">
+                <div class="featured-card">
+                    <div class="feat-header">SEARCH RESULT</div>
+                    <h1 class="feat-name" id="featName">-</h1>
+                    <div class="feat-code" id="featCode">-</div>
+                    <div class="feat-scroll-area">
+                        <div id="singleItemInfo"><div class="feat-qty" id="featQty">0</div></div>
+                        <div id="featListArea" style="display:none; text-align:left; margin-top:10px;"></div>
+                        <div class="memo-area">
+                            <div class="memo-label"><i class="fa-solid fa-note-sticky"></i> 메모</div>
+                            <textarea id="featMemo" class="memo-input" placeholder="내용 입력..."></textarea>
+                            <button class="memo-save-btn admin-only" onclick="saveItemMemo()">저장</button>
+                        </div>
+                    </div>
+                    <div id="featStatus" style="margin-top:10px;"></div>
+                    <button onclick="closeFeatured()" class="btn-close-feat">닫기</button>
+                </div>
+            </div>
+
+            <div class="kpi-container" id="kpiSection">
+                </div>
+
+            <div style="display: flex; gap: 20px; margin-bottom: 30px;" id="miniKpiSection">
+                </div>
+
+            <div class="dashboard-split" id="dashboardSplit">
+                <div class="log-container"><div class="section-header"><span>📋 소통 게시판 (업무 공유)</span><button class="btn-small admin-only" onclick="openLogModal()">+추가</button></div><ul class="log-list" id="logList"></ul></div>
+                <div class="calendar-container"><div class="section-header"><span id="calMonthTitle">2026.02</span><div><button class="btn-small" onclick="changeMonth(-1)">◀</button><button class="btn-small" onclick="changeMonth(1)">▶</button></div></div><div class="cal-body"><div class="cal-weekdays"><div>일</div><div>월</div><div>화</div><div>수</div><div>목</div><div>금</div><div>토</div></div><div class="cal-grid" id="calendarGrid"></div></div></div>
+            </div>
+
+            <div id="page-system_log" class="page-section">
+                <div class="toolbar" style="margin-bottom: 20px;">
+                    <h2 style="margin:0; font-size:24px;">📝 시스템 작업 로그 내역 (자동 기록)</h2>
+                    <button class="btn-setting primary" onclick="loadSystemLogs()"><i class="fa-solid fa-rotate-right"></i> 새로고침</button>
+                </div>
+                <div class="table-container">
+                    <table id="systemLogTable">
+                        <thead><tr><th style="width:160px;">발생 일시</th><th style="width:140px;">작업 분류</th><th style="width:120px;">작업자</th><th style="text-align:left;">상세 내용</th></tr></thead>
+                        <tbody id="systemLogBody"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div id="page-inventory" class="page-section">
+    <div class="toolbar">
+        <div id="currentWarehouseLabel" style="font-weight:700; color:var(--primary); font-size:18px;">[품목별 재고 검색]</div>
+        <div style="display:flex; gap:5px; align-items:center;">
+            <div class="search-wrapper" style="margin:0;">
+                <i class="fa-solid fa-magnifying-glass search-icon"></i>
+                <input type="text" id="searchInput" class="search-input" placeholder="품목명 검색...">
+            </div>
+            <button class="btn-setting" onclick="openInventoryItemSearch()" style="margin:0; height:38px; padding:0 15px; background:var(--primary); color:white; border:none; border-radius:8px;" title="전체 품목 목록에서 찾기">
+                <i class="fa-solid fa-magnifying-glass-plus"></i> 목록
+            </button>
+        </div>
+    </div>
+                <div class="recent-search-area" id="recentSearchArea" style="margin-bottom:15px;"></div>
+                <div class="table-container"><table id="inventoryTable"><thead><tr id="tableHeaderRow"></tr></thead><tbody id="inventoryBody"></tbody></table></div>
+                <div class="selection-bar" id="selectionBar"><span id="selectedCount">0개 선택됨</span><button class="btn-multi-qr" onclick="generateMultiQr()">QR 생성</button></div>
+            </div>
+            
+            <div id="page-incoming" class="page-section">
+                <div class="toolbar" style="margin-bottom: 20px;">
+                    <h2 style="margin:0; font-size:24px;">📦 입고 내역 (자재/부품 수급 기록)</h2>
+                    <div style="display:flex; gap:10px; align-items:center;">
+                        <button class="btn-setting" onclick="toggleAllIncoming(true)"><i class="fa-solid fa-folder-open"></i> 펼치기</button>
+                        <button class="btn-setting" onclick="toggleAllIncoming(false)"><i class="fa-solid fa-folder"></i> 접기</button>
+                        <button class="btn-upload admin-only" onclick="openIncomingModal()" style="background:linear-gradient(135deg, var(--success), #2a9d8f);"><i class="fa-solid fa-plus"></i> 입고 등록</button>
+                    </div>
+                </div>
+                <div class="table-container">
+                    <table id="incomingTable">
+                        <thead><tr><th style="width:180px; text-align:left; padding-left:15px;">품목별 분류</th><th style="text-align:left;">업체명 (구매처)</th><th style="text-align:left;">세부 품목명</th><th style="width:120px;">수량 합계/건</th><th style="text-align:left;">비고</th><th class="admin-only" style="width:100px;">관리</th></tr></thead>
+                        <tbody id="incomingBody"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div id="page-bom_tree" class="page-section">
+                <div class="toolbar" style="margin-bottom: 20px;">
+                    <h2 style="margin:0; font-size:24px;">🌳 계층형 BOM 구조 및 소요량 조회</h2>
+                    <div style="display:flex; gap:10px; align-items:center;">
+                        <button class="btn-setting" onclick="toggleAllBom(true)"><i class="fa-solid fa-folder-open"></i> 펼치기</button>
+                        <button class="btn-setting" onclick="toggleAllBom(false)"><i class="fa-solid fa-folder"></i> 접기</button>
+                        <input type="file" id="bomExcelInput" accept=".xlsx, .xls" style="display:none;" onchange="handleBomExcelUpload(event)">
+                        <button class="btn-setting admin-only" style="border-color:#10b981; color:#10b981; font-weight:700; margin-left:10px;" onclick="document.getElementById('bomExcelInput').click()">
+                            <i class="fa-solid fa-file-excel"></i> 엑셀 일괄 업로드
+                        </button>
+                        <button class="btn-upload admin-only" onclick="openBomModal()" style="background:linear-gradient(135deg, var(--primary), var(--primary-dark));">
+                            <i class="fa-solid fa-plus"></i> BOM 부품 등록
+                        </button>
+                    </div>
+                </div>
+                <div class="table-container">
+                    <table id="bomTreeTable">
+                        <thead style="background:#f8fafc; border-bottom:2px solid #cbd5e1;">
+                            <tr>
+                                <th style="width:80px; color:#475569;">Level</th>
+                                <th style="text-align:left; color:#475569;">품목코드 (분류)</th>
+                                <th style="text-align:left; color:#475569;">품목명</th>
+                                <th style="width:140px; color:#475569;">업체명(구매처)</th>
+                                <th style="width:100px; color:var(--primary);">소요량</th>
+                                <th class="admin-only" style="width:100px;">관리</th>
+                            </tr>
+                        </thead>
+                        <tbody id="bomTreeBody"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div id="page-history" class="page-section">
+                <div class="toolbar" style="margin-bottom: 20px;">
+                    <h2 style="margin:0; font-size:24px;">📈 생산 내역 및 추이</h2>
+                    <div style="display:flex; gap:10px; align-items:center;">
+                        <select id="historyChartMode" class="form-control" style="width:auto; margin:0;" onchange="loadHistory()">
+                            <option value="month">월별 차트</option>
+                            <option value="year">연도별 차트</option>
+                        </select>
+                        <input type="date" id="historyFilterDate" class="form-control" style="width:auto; margin:0;" onchange="loadHistory()">
+                        <button class="btn-setting" onclick="resetHistoryFilter()"><i class="fa-solid fa-rotate-left"></i> 전체</button>
+                        <button class="btn-setting" onclick="toggleAllHistory(true)"><i class="fa-solid fa-folder-open"></i> 펼치기</button>
+                        <button class="btn-setting" onclick="toggleAllHistory(false)"><i class="fa-solid fa-folder"></i> 접기</button>
+                        <button class="btn-upload admin-only" onclick="openHistoryModal()">
+                            <i class="fa-solid fa-plus"></i> 내역 추가
+                        </button>
+                    </div>
+                </div>
+                <div class="chart-container"><div style="height: 280px; position:relative;"><canvas id="productionChart"></canvas></div></div>
+                <div class="table-container">
+                    <table id="historyTable">
+                        <thead><tr><th style="width:120px;">생산 일자</th><th style="text-align:left;">생산 품목</th><th style="width:100px;">생산 수량</th><th style="width:180px;">불량 내역 (불량률)</th><th style="text-align:left;">비고</th><th class="admin-only" style="width:60px;">삭제</th></tr></thead>
+                        <tbody id="historyBody"></tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <div id="page-production" class="page-section">
+                <div class="toolbar" style="margin-bottom: 10px;">
+                    <h2 style="margin:0; font-size:24px;">🏭 제품 단가 관리 (BOM)</h2>
+                    <button class="btn-upload admin-only" onclick="openProductionModal()" style="background:linear-gradient(135deg, var(--success), var(--primary));"><i class="fa-solid fa-plus"></i> 완제품 등록</button>
+                </div>
+                <div class="toolbar" style="margin-bottom: 10px; margin-top: 10px;">
+                    <h3 style="margin:0; font-size:16px; color:var(--primary);"><i class="fa-solid fa-chart-line"></i> 품목별 평균 단가 요약</h3>
+                </div>
+                <div class="table-container" style="margin-bottom: 30px; min-height: auto;">
+                    <table id="productionSummaryTable">
+                        <thead style="background:#f8fafc;">
+                            <tr><th style="text-align:left;">생산품명</th><th>기준월</th><th>월 누적 생산량</th><th>평균 최종단가 (전월대비)</th><th>평균 VAT포함단가</th><th>월 총 생산비용 (전월비교)</th></tr>
+                        </thead>
+                        <tbody id="productionSummaryBody"></tbody>
+                    </table>
+                </div>
+                <div class="toolbar" style="margin-bottom: 10px;">
+                    <h3 style="margin:0; font-size:16px;"><i class="fa-solid fa-list"></i> 상세 생산 기록 (과거 단가 비교)</h3>
+                </div>
+                <div class="table-container">
+                    <table id="productionRecordTable">
+                        <thead><tr><th>생산일자</th><th style="text-align:left;">최종 생산품명</th><th>생산수량</th><th>제품 1개당 단가 (이전대비 증감)</th><th>1개당 VAT포함단가</th><th>전체 투입 총비용</th><th class="admin-only" style="width:140px;">관리</th></tr></thead>
+                        <tbody id="productionRecordBody"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div id="page-part_price" class="page-section">
+                <div class="toolbar" style="margin-bottom: 20px;">
+                    <h2 style="margin:0; font-size:24px;">🔧 부속품(자재) 구매 및 단가 관리</h2>
+                    <div style="display:flex; gap:10px; align-items:center;">
+                        <button class="btn-setting" onclick="toggleAllPartPrice(true)"><i class="fa-solid fa-folder-open"></i> 펼치기</button>
+                        <button class="btn-setting" onclick="toggleAllPartPrice(false)"><i class="fa-solid fa-folder"></i> 접기</button>
+                        
+                        <input type="file" id="partPriceExcelInput" accept=".xlsx, .xls" style="display:none;" onchange="handlePartPriceExcelUpload(event)">
+                        <button class="btn-setting admin-only" style="border-color:#10b981; color:#10b981; font-weight:700;" onclick="document.getElementById('partPriceExcelInput').click()">
+                            <i class="fa-solid fa-file-excel"></i> 엑셀 일괄 업로드
+                        </button>
+                        
+                        <button class="btn-upload admin-only" onclick="openPartPriceModal()" style="background:linear-gradient(135deg, var(--warning), var(--danger));"><i class="fa-solid fa-plus"></i> 부품 단가 등록</button>
+                    </div>
+                </div>
+                <div class="table-container">
+                    <table id="partPriceTable">
+                        <thead><tr><th style="width:120px;">입고일자</th><th style="text-align:left;">부품명 (자재명)</th><th style="width:100px;">구매 수량</th><th style="width:150px;">총 구매액</th><th style="width:180px;">1개당 단가 (증감)</th><th>비고</th><th class="admin-only" style="width:100px;">관리</th></tr></thead>
+                        <tbody id="partPriceBody"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div id="page-archive" class="page-section">
+                <div class="toolbar" style="margin-bottom: 20px;">
+                    <h2 style="margin:0; font-size:24px;">📁 사내 자료실</h2>
+                    <div style="display:flex; gap:10px; align-items:center;">
+                        <button class="btn-setting" onclick="toggleAllArchive(true)"><i class="fa-solid fa-folder-open"></i> 펼치기</button>
+                        <button class="btn-setting" onclick="toggleAllArchive(false)"><i class="fa-solid fa-folder"></i> 접기</button>
+                        <div class="search-wrapper" style="width:250px; margin-left:10px;"><i class="fa-solid fa-magnifying-glass search-icon"></i><input type="text" id="archiveSearch" class="search-input" placeholder="타이틀/파일명 검색..." onkeyup="filterArchive()"></div>
+                        <button class="btn-upload admin-only" onclick="openArchiveModal()"><i class="fa-solid fa-cloud-arrow-up" style="font-size:16px;"></i> 자료 등록</button>
+                    </div>
+                </div>
+                <div class="table-container">
+                    <table id="archiveTable">
+                        <thead><tr><th style="text-align:left;">폴더 타이틀 / 파일명</th><th style="width:100px;">크기</th><th style="width:150px;">등록일시</th><th style="width:180px;">확인/다운로드</th><th class="admin-only" style="width:60px;">관리</th></tr></thead>
+                        <tbody id="archiveBody"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div id="page-board" class="page-section">
+                <div class="toolbar" style="margin-bottom: 20px;">
+                    <h2 style="margin:0; font-size:24px;">💬 소통 게시판</h2>
+                    <div style="display:flex; gap:10px; align-items:center;">
+                        <button class="btn-upload" onclick="openBoardWriteModal()" style="background:linear-gradient(135deg, var(--primary), var(--primary-dark));"><i class="fa-solid fa-pen" style="font-size:16px;"></i> 글쓰기</button>
+                    </div>
+                </div>
+                <div class="table-container">
+                    <table id="boardTable">
+                        <thead><tr><th style="width:60px;">No</th><th style="text-align:left;">제목</th><th style="width:120px;">작성자</th><th style="width:150px;">작성일시</th><th class="admin-only" style="width:90px;">관리</th></tr></thead>
+                        <tbody id="boardBody"></tbody>
+                    </table>
+                </div>
+            </div>
+            <div id="page-supplier" class="page-section">
+                <div class="toolbar" style="margin-bottom: 20px;">
+                    <h2 style="margin:0; font-size:24px;">🤝 협력업체(구매처) 연락망 및 납기일 수첩</h2>
+                    <button class="btn-upload admin-only" onclick="openSupplierModal()" style="background:linear-gradient(135deg, #0ea5e9, #0284c7);"><i class="fa-solid fa-plus"></i> 신규 등록</button>
+                </div>
+                <div class="table-container">
+                    <table id="supplierTable">
+                        <thead>
+                            <tr>
+                                <th style="text-align:left;">업체명</th>
+                                <th style="width:120px;">담당자</th>
+                                <th style="width:150px;">연락처</th>
+                                <th style="width:180px;">평균 납기일(Lead Time)</th>
+                                <th style="text-align:left;">주요 취급 품목 및 메모</th>
+                                <th class="admin-only" style="width:100px; text-align:center;">관리</th>
+                            </tr>
+                        </thead>
+                        <tbody id="supplierBody"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div id="page-settings" class="page-section">
+                <div class="settings-container">
+                    <div class="setting-item"><div><h3>다크 모드</h3><p>눈의 피로를 줄여줍니다.</p></div><input type="checkbox" id="darkModeToggle" onchange="toggleDarkMode(this.checked)"></div>
+                    <div class="setting-item"><div><h3>글자 크기</h3><p>화면 배율을 조절합니다.</p></div><input type="range" id="zoomRange" min="0.8" max="1.3" step="0.1" oninput="changeTextScale(this.value)"></div>
+                    <div class="setting-item"><div><h3>D-Day 관리</h3><p>주요 일정을 편집합니다.</p></div><button class="btn-setting admin-only" onclick="openDDayModal()">관리</button></div>
+                    <div class="setting-item"><div><h3>공지사항 관리</h3><p>상단 공지를 수정합니다.</p></div><button class="btn-setting admin-only" onclick="openNoticeModal()">관리</button></div>
+                    <div class="setting-item"><div><h3>데이터 백업</h3><p>전체 데이터를 저장합니다.</p></div><button class="btn-setting primary admin-only" onclick="downloadBackup()">다운로드</button></div>
+                    
+                    <div class="setting-item">
+                        <div>
+                            <h3>대시보드 KPI 관리</h3>
+                            <p>메인 화면의 주요 재고 표시 항목을 변경합니다.</p>
+                        </div>
+                        <button class="btn-setting admin-only" onclick="openKpiModal()">관리</button>
+                    </div>
+
+                    <div class="admin-only">
+                        <div class="setting-item" style="display: flex !important; justify-content: space-between !important; align-items: center !important;">
+                            <div>
+                                <h3 style="color:var(--danger); margin:0;">로그아웃</h3>
+                                <p style="margin:5px 0 0 0;">시스템에서 안전하게 접속을 종료합니다.</p>
+                            </div>
+                            <button class="btn-setting" style="background:var(--danger); color:white; border:none; white-space: nowrap;" onclick="handleLogout(); switchPage('dashboard', document.querySelectorAll('.menu-item')[0]);">로그아웃</button>
+                        </div>
+                    </div>
+
+                    <div style="text-align:center; margin-top:40px; color:#aaa; font-size:13px;">Developed by Shin Young-ho (2026)</div>
+                </div>
+            </div>
+            
+        </div> 
+    </div>
+
+    <div class="loading-overlay" id="loadingOverlay"><div class="spinner"></div></div>
+    <div class="toast-container" id="toastContainer"></div>
+    <button class="btn-top" id="btnTop" onclick="scrollToTop()">⬆</button>
+
+ <div class="modal-overlay" id="kpiModal" style="display:none;">
+        <div class="modal">
+            <h2 style="margin-bottom: 20px; color:var(--primary);"><i class="fa-solid fa-chart-pie"></i> 대시보드 KPI 관리</h2>
+            <input type="hidden" id="kpiEditId">
+            
+            <label style="font-size:12px; color:var(--gray);">카드 표시 크기</label>
+            <select id="kpiType" class="form-control">
+                <option value="main">메인 카드 (대형)</option>
+                <option value="mini">미니 카드 (소형)</option>
+            </select>
+            <label style="font-size:12px; color:var(--gray);">대시보드 표시명</label>
+            <input type="text" id="kpiName" class="form-control" placeholder="표시명 (예: S26 밴드)">
+            <label style="font-size:12px; color:var(--gray);">이카운트 품목코드</label>
+            <div style="display:flex; gap:5px; margin-bottom:15px;">
+                <input type="text" id="kpiCode" class="form-control" placeholder="이카운트 품목코드 (예: FP-105)" style="margin-bottom:0; flex:1;">
+                <button class="btn-setting" type="button" style="margin:0; padding:0 15px; background:var(--light); border:1px solid #cbd5e1; color:var(--dark);" onclick="openKpiItemSearch()">
+                    <i class="fa-solid fa-magnifying-glass"></i>
+                </button>
+            </div>
+
+            <label style="font-size:12px; color:var(--gray);">대상 창고명 (선택)</label>
+            <input type="text" id="kpiWarehouse" class="form-control" placeholder="예: 공장창고 (비워두면 전체 합계)">
+            <label style="font-size:12px; color:var(--gray);">목표 안전재고 수량</label>
+            <input type="number" id="kpiSafeQty" class="form-control" placeholder="안전재고 수량 (예: 100)">
+            <label style="font-size:12px; color:var(--gray);">아이콘 이미지 파일 (선택)</label>
+            <input type="text" id="kpiImg" class="form-control" placeholder="이미지 파일명 (예: s26.png)">
+            
+            <button class="btn-save" style="width:100%; margin-bottom:15px; background:linear-gradient(135deg, var(--success), var(--primary));" onclick="saveKpi()">추가 / 수정</button>
+            <ul id="kpiList" style="max-height:200px; overflow-y:auto; padding:0; list-style:none; border-top:1px solid #e2e8f0; padding-top:10px;"></ul>
+            <button class="btn-cancel" style="width:100%; margin-top:10px;" onclick="document.getElementById('kpiModal').style.display='none'">닫기</button>
+        </div>
+    </div>
+
+   <div class="modal-overlay" id="bomModal" style="display:none;">
+        <div class="modal" style="max-width: 450px; width: 95%;">
+            <h2 style="margin-bottom: 20px;">BOM 항목 등록/수정</h2>
+            <input type="hidden" id="bomEditId">
+            <label style="font-size:12px; color:var(--gray);">상위 품목 (부모 노드 지정)</label>
+            <select id="bomParentId" class="form-control" style="margin-bottom:15px; font-weight:600;"></select>
+            
+            <label style="font-size:12px; color:var(--gray);">품목 코드 (이카운트 자동완성 지원)</label>
+            <input type="text" id="bomItemCode" list="inventoryDatalist" class="form-control" placeholder="코드를 입력하거나 선택하세요" onchange="onBomCodeChange()">
+            
+            <label style="font-size:12px; color:var(--gray);">품목명</label>
+            <input type="text" id="bomItemName" class="form-control" placeholder="품목명 입력 (자동완성에 없으면 직접 입력)">
+            
+            <div style="display:flex; gap:10px;">
+                <div style="flex:2;">
+                    <label style="font-size:12px; color:var(--gray);">구매처 (업체명)</label>
+                    <input type="text" id="bomSupplier" class="form-control" placeholder="예: 파낙토스 등 (선택사항)">
+                </div>
+                <div style="flex:1;">
+                    <label style="font-size:12px; color:var(--primary); font-weight:bold;">소요량</label>
+                    <input type="number" id="bomReqQty" class="form-control" placeholder="1" value="1">
+                </div>
+            </div>
+            
+            <input type="hidden" id="bomVersion" value="">
+            <input type="hidden" id="bomUnitPrice" value="0">
+            <select id="pastPriceSelect" style="display:none;"></select>
+
+            <p style="font-size:11px; color:#fca311; margin-top:5px; margin-bottom:0;"><i class="fa-solid fa-circle-info"></i> 정확한 단가는 완제품 생산 내역을 등록할 때 부속품 단가표를 기반으로 자동 계산됩니다.</p>
+            
+            <div class="modal-btns">
+                <button class="btn-cancel" onclick="document.getElementById('bomModal').style.display='none'">취소</button>
+                <button class="btn-save" onclick="saveBom()">저장하기</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="productionModal" style="display:none;">
+        <div class="modal" style="max-width: 950px; width: 95%;">
+            <h2 style="margin-bottom: 20px;">제품 단가 등록 / 수정</h2>
+            <input type="hidden" id="prodRecId">
+            <div style="background:#eff6ff; padding:12px; border-radius:12px; margin-bottom:20px; border:1px solid #bfdbfe; display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+                <span style="font-size:13px; font-weight:700; color:var(--primary); min-width:80px;"><i class="fa-solid fa-link"></i> BOM 연동</span>
+                <select id="prodBomSelect" class="form-control" style="margin:0; flex:2; min-width:150px;"></select>
+                <input type="month" id="prodBomMonth" class="form-control" style="margin:0; flex:1; min-width:120px;" title="단가를 불러올 기준 월 선택">
+                <button class="btn-save" style="margin:0; height:38px; padding:0 20px; box-shadow:none;" onclick="applyBomToProduction()">부품 가져오기</button>
+            </div>
+            <div style="display:flex; gap:10px; margin-bottom:15px; flex-wrap:wrap;">
+                <div style="flex:1; min-width:130px;"><label style="font-size:12px; color:var(--gray);">생산일자</label><input type="date" id="prodRecDate" class="form-control"></div>
+                <div style="flex:2; min-width:180px;"><label style="font-size:12px; color:var(--gray);">최종 생산품명</label><input type="text" id="prodRecName" class="form-control" placeholder="BOM 연동 시 자동입력됩니다." oninput="calcProdTotal()"></div>
+                <div style="flex:1; min-width:130px;">
+                    <label style="font-size:12px; color:var(--gray);">생산수량(대)</label>
+                    <div style="display:flex; gap:5px;">
+                        <input type="number" id="prodRecQty" class="form-control" placeholder="수량" value="1" oninput="calcProdTotal()" style="margin:0;">
+                        <button class="btn-setting primary" style="margin:0; padding:0 15px;" onclick="applyProdQty()">확인</button>
+                    </div>
+                </div>
+            </div>
+            <div style="background:#f8fafc; padding:15px 20px; border-radius:12px; margin-bottom:20px; border:1px solid #cbd5e1; box-shadow:inset 0 1px 3px rgba(0,0,0,0.05);">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;"><span style="color:#64748b; font-size:14px; font-weight:600;">전체 생산 소모 비용 <span id="summaryProdQtyLabel" style="color:var(--primary);"></span></span><span style="font-size:22px; font-weight:800; color:var(--dark);"><span id="prodTotalCost">0</span> 원</span></div>
+                <div style="border-top:1px dashed #cbd5e1; margin:12px 0;"></div>
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;"><span style="color:#64748b; font-size:14px; font-weight:600;"><i class="fa-solid fa-box"></i> 제품 1개당 단가 (공급가액)</span><span style="font-size:20px; font-weight:800; color:var(--primary);"><span id="summaryUnitPrice">0</span> 원</span></div>
+                <div style="display:flex; justify-content:space-between; align-items:center;"><span style="color:#64748b; font-size:13px; font-weight:600;">제품 1개당 VAT 포함 단가</span><span style="font-size:16px; font-weight:700; color:var(--danger);"><span id="summaryVatPrice">0</span> 원</span></div>
+                <div id="prodComparisonArea" style="margin-top:15px; padding-top:10px; border-top:1px solid #e2e8f0; font-size:13px; font-weight:600; display:none; text-align:right;"></div>
+            </div>
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; padding-top:10px;"><h3 style="margin:0; font-size:16px; color:var(--primary);">투입 자재 목록</h3><button class="btn-small" onclick="addProdMaterialRow()" style="background:var(--light); border:1px solid #cbd5e1;"><i class="fa-solid fa-plus"></i> 직접 추가</button></div>
+            <div style="max-height:250px; overflow-y:auto; border:1px solid #e2e8f0; border-radius:8px; background:var(--light);">
+                <table style="width:100%; text-align:left; border-collapse: collapse; white-space: nowrap;">
+                    <thead style="position:sticky; top:0; z-index:10; background:#f8fafc; box-shadow:0 1px 2px rgba(0,0,0,0.05);">
+                        <tr><th style="padding:10px; color:#64748b; font-size:13px;">자재명</th><th style="padding:10px; color:#64748b; font-size:13px; width:110px;">입고일</th><th style="padding:10px; color:#64748b; font-size:13px; width:100px;">투입수량</th><th style="padding:10px; color:#64748b; font-size:13px; width:110px;">총금액(VAT별도)</th><th style="padding:10px; color:var(--danger); font-size:13px; width:110px;">총금액(VAT포함)</th><th style="padding:10px; color:#64748b; font-size:13px; width:80px;">자재 1개단가</th><th style="padding:10px; color:var(--primary); font-weight:bold; font-size:13px; width:100px;">제품 1대당 비용</th><th style="padding:10px; width:40px;"></th></tr>
+                    </thead>
+                    <tbody id="prodMaterialBody"></tbody>
+                </table>
+            </div>
+            <input type="hidden" id="prodRecPrice"><input type="hidden" id="prodRecPriceVAT">
+            <div class="modal-btns"><button class="btn-cancel" onclick="document.getElementById('productionModal').style.display='none'">취소</button><button class="btn-save" onclick="saveProductionRecord()">저장하기</button></div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="productionDetailModal" style="display:none;">
+        <div class="modal" style="max-width: 800px; width: 95%;">
+            <h2 id="detailProdName" style="margin-bottom:15px; color:var(--primary);">생산품명</h2>
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:20px; background:var(--light); padding:15px; border-radius:12px;">
+                <div><span style="color:var(--gray); font-size:13px;">생산일자</span><div id="detailProdDate" style="font-weight:600;"></div></div>
+                <div><span style="color:var(--gray); font-size:13px;">총 생산수량</span><div id="detailProdQty" style="font-weight:600;"></div></div>
+                <div style="grid-column: span 2; padding-top:10px; margin-top:5px; border-top:1px dashed #cbd5e1;"></div>
+                <div><span style="color:var(--gray); font-size:13px;">제품 1개당 단가</span><div id="detailProdPrice" style="font-weight:800; font-size:16px; color:var(--primary);"></div></div>
+                <div><span style="color:var(--danger); font-size:13px; font-weight:bold;">제품 1개당 VAT포함단가</span><div id="detailProdPriceVAT" style="font-weight:700; color:var(--danger);"></div></div>
+                <div style="grid-column: span 2; padding-top:10px; margin-top:5px; border-top:1px solid #e2e8f0;"><span style="color:var(--gray); font-size:13px;">전체 자재 총비용</span><div id="detailProdTotalCost" style="font-weight:800; font-size:20px; color:var(--dark);"></div></div>
+            </div>
+            <h3 style="font-size:15px; margin-bottom:10px;">투입 자재 상세 내역</h3>
+            <div style="max-height:300px; overflow-y:auto; border:1px solid #e2e8f0; border-radius:8px;">
+                <table style="width:100%; border-collapse:collapse; text-align:center; font-size:14px; white-space: nowrap;">
+                    <thead style="background:#f8fafc; position:sticky; top:0;"><tr><th style="padding:10px;">자재명</th><th style="padding:10px;">입고일</th><th style="padding:10px;">투입수량</th><th style="padding:10px;">총 투입금액(별도)</th><th style="padding:10px; color:var(--danger);">총 투입금액(포함)</th><th style="padding:10px;">자재 1개단가</th><th style="padding:10px; color:var(--primary);">제품 1대당 비용</th></tr></thead>
+                    <tbody id="detailProdMaterials"></tbody>
+                </table>
+            </div>
+            <div class="modal-btns"><button class="btn-cancel" onclick="document.getElementById('productionDetailModal').style.display='none'">닫기</button></div>
+        </div>
+    </div>
+
+   <div class="modal-overlay" id="partPriceModal" style="display:none;">
+        <div class="modal" style="max-width: 450px; width: 95%;">
+            <h2 style="margin-bottom: 20px; color:var(--primary);"><i class="fa-solid fa-won-sign"></i> 부속품 단가 등록/수정</h2>
+            <input type="hidden" id="ppEditId"> 
+            
+            <label>입고 일자</label>
+            <input type="date" id="ppDate" class="form-control">
+            
+            <label>부품명 (자재명)</label>
+            <input type="text" id="ppName" class="form-control" placeholder="예: 사탕 막대, 박스 등">
+            
+            <label>구매 수량</label>
+            <input type="number" id="ppQty" class="form-control" placeholder="예: 1000" oninput="calcPartUnitPrice(this, 'qty')">
+            
+            <div style="display:flex; gap:10px;">
+                <div style="flex:1;">
+                    <label>총 구매액 <span style="color:var(--gray); font-size:11px;">(VAT 별도)</span></label>
+                    <input type="number" id="ppTotalCost" class="form-control" placeholder="예: 20000" oninput="calcPartUnitPrice(this, 'cost')">
+                </div>
+                <div style="flex:1;">
+                    <label style="color:var(--danger);">총 구매액 <span style="font-size:11px;">(VAT 포함)</span></label>
+                    <input type="number" id="ppTotalCostVat" class="form-control" placeholder="예: 22000" oninput="calcPartUnitPrice(this, 'vat')">
+                </div>
+            </div>
+            
+            <label>1개당 단가 <span style="color:var(--gray); font-size:11px;">(VAT 별도 기준 / 자동 계산)</span></label>
+            <input type="number" id="ppPrice" class="form-control" placeholder="단가 자동 계산" readonly style="background:#f1f5f9; cursor:not-allowed;">
+            
+            <label>비고</label>
+            <input type="text" id="ppNote" class="form-control" placeholder="비고 (선택 사항)">
+            
+            <div class="modal-btns">
+                <button class="btn-cancel" onclick="document.getElementById('partPriceModal').style.display='none'">취소</button>
+                <button class="btn-save" onclick="savePartPrice()">저장하기</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="incomingModal" style="display:none;">
+        <div class="modal" style="max-width: 400px; width: 90%;">
+            <h2 style="margin-bottom: 20px;">입고 내역 등록/수정</h2>
+            <input type="hidden" id="incEditId">
+            <label style="font-size:12px; color:var(--gray);">입고 일자</label><input type="date" id="incDate" class="form-control">
+            <label style="font-size:12px; color:var(--gray);">업체명 (구매처)</label><input type="text" id="incSupplier" class="form-control" placeholder="예: 파낙토스">
+            <label style="font-size:12px; color:var(--gray);">품목명 (이카운트 자동완성 지원)</label><input type="text" id="incProduct" list="inventoryDatalist" class="form-control" placeholder="품목 검색 및 입력">
+            <label style="font-size:12px; color:var(--gray);">수량</label><input type="number" id="incQty" class="form-control" placeholder="수량 입력">
+            <label style="font-size:12px; color:var(--gray);">비고</label><input type="text" id="incNote" class="form-control" placeholder="비고 입력">
+            <div class="modal-btns"><button class="btn-cancel" onclick="document.getElementById('incomingModal').style.display='none'">취소</button><button class="btn-save" onclick="saveIncoming()">저장하기</button></div>
+        </div>
+    </div>
+
+   <div class="modal-overlay" id="logModal" style="display:none;">
+        <div class="modal">
+            <h2 style="margin-bottom: 15px;">업무 로그 (게시판)</h2>
+            <input type="hidden" id="logEditId">
+            <div style="display:flex; gap:10px; margin-bottom:10px;">
+                <select class="form-control" id="logType" style="width:100px; margin-bottom:0;" onchange="toggleLogIncomingFields()">
+                    <option value="notice">공지</option><option value="issue">이슈</option><option value="in">입고</option><option value="out">출고</option><option value="prod">생산</option>
+                </select>
+                <input type="date" id="logDate" class="form-control" style="margin-bottom:0;">
+            </div>
+            <input id="logTitle" class="form-control" placeholder="제목 (입고 선택 시 '부품명'으로 저장됩니다)" style="margin-bottom:10px;">
+            <div id="logIncomingFields" style="display:none; gap:10px; margin-bottom:10px; background:#f8fafc; padding:10px; border-radius:8px; border:1px solid #cbd5e1;">
+                <div style="flex:1;">
+                    <label style="font-size:12px; color:var(--primary); font-weight:700;">입고 수량</label>
+                    <input type="number" id="logInQty" class="form-control" placeholder="예: 100" style="margin-bottom:0;">
+                </div>
+                <div style="flex:1;">
+                    <label style="font-size:12px; color:var(--primary); font-weight:700;">총 구매액 (원)</label>
+                    <input type="number" id="logInTotalCost" class="form-control" placeholder="예: 50000" style="margin-bottom:0;">
+                </div>
+            </div>
+
+            <div id="logProdFields" style="display:none; flex-direction:column; gap:10px; margin-bottom:10px; background:#f5f3ff; padding:10px; border-radius:8px; border:1px solid #ddd6fe;">
+                <div>
+                    <label style="font-size:12px; color:#7209b7; font-weight:700;">생산 수량 (총량)</label>
+                    <input type="number" id="logProdQty" class="form-control" placeholder="예: 1000" style="margin-bottom:0;">
+                </div>
+                <div style="background:#fff; padding:10px; border-radius:8px; border:1px solid #e2e8f0; margin-top:5px;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:5px;">
+                        <span style="font-size:12px; font-weight:700; color:var(--danger);"><i class="fa-solid fa-triangle-exclamation"></i> 세부 불량 내역 (선택)</span>
+                        <button class="btn-small" onclick="addLogDefectRow()" style="background:var(--light); border:1px solid #cbd5e1; color:var(--dark); padding:2px 8px; font-size:11px;">+ 불량 추가</button>
+                    </div>
+                    <table style="width:100%; border-collapse:collapse;"><tbody id="logDefectBody"></tbody></table>
+                </div>
+            </div>
+            <textarea id="logContent" class="form-control" placeholder="상세 내용" style="min-height:80px; resize:vertical; margin-bottom:10px;"></textarea>
+            <input id="logWriter" class="form-control" placeholder="작성자">
+            <div class="modal-btns"><button class="btn-cancel" onclick="closeLogModal()">취소</button><button class="btn-save" onclick="saveLog()">저장 및 연동</button></div>
+        </div>
+    </div>
+    
+    <div class="modal-overlay" id="dailyModal" style="display:none;">
+        <div class="modal" style="max-width:400px; width:90%;">
+            <h2 id="dailyModalTitle" style="margin-bottom:15px; border-bottom:1px solid #eee; padding-bottom:10px; font-size:18px;">일정 상세</h2>
+            <h3 style="font-size:14px; margin-bottom:5px; color:var(--primary);"><i class="fa-regular fa-calendar-check"></i> 캘린더 일정</h3>
+            <ul id="dailyModalEvents" style="list-style:none; padding:0; margin-bottom:20px; font-size:14px;"></ul>
+            <h3 style="font-size:14px; margin-bottom:5px; color:#f59e0b;"><i class="fa-solid fa-clipboard-list"></i> 소통 로그</h3>
+            <ul id="dailyModalLogs" style="list-style:none; padding:0; margin-bottom:15px; font-size:14px;"></ul>
+            <div class="modal-btns">
+                <button class="btn-cancel admin-only" onclick="document.getElementById('calDateInput').value=document.getElementById('dailyDateObj').value; document.getElementById('dailyModal').style.display='none'; document.getElementById('calModal').style.display='flex';">+ 일정 추가</button>
+                <button class="btn-save" onclick="document.getElementById('dailyModal').style.display='none'">닫기</button>
+            </div>
+            <input type="hidden" id="dailyDateObj">
+        </div>
+    </div>
+    
+    <div class="modal-overlay" id="calModal" style="display:none;"><div class="modal"><h2>일정 추가</h2><input type="hidden" id="calDateInput"><input id="calEventContent" class="form-control" placeholder="내용"><div class="modal-btns"><button class="btn-cancel" onclick="document.getElementById('calModal').style.display='none'">취소</button><button class="btn-save" onclick="saveCalendarEvent()">저장</button></div></div></div>
+    
+    <div class="modal-overlay" id="historyModal" style="display:none;">
+        <div class="modal" style="max-width: 500px; width: 95%;">
+            <h2 style="margin-bottom: 20px; color:var(--primary);"><i class="fa-solid fa-clock-rotate-left"></i> 생산 내역 및 불량 기록</h2>
+            <div style="display:flex; gap:10px;">
+                <div style="flex:1;"><label style="font-size:12px; color:var(--gray);">생산 일자</label><input type="date" id="histDate" class="form-control"></div>
+                <div style="flex:1;"><label style="font-size:12px; color:var(--gray);">생산 수량 (총 생산량)</label><input type="number" id="histQty" class="form-control" placeholder="예: 1000"></div>
+            </div>
+           <label style="font-size:12px; color:var(--gray);">생산 품목 (직접 입력 또는 검색)</label>
+            <input type="text" id="histProduct" list="inventoryDatalist" class="form-control" placeholder="생산 품목명을 직접 입력하세요">
+            <div style="margin-top:15px; background:#f8fafc; padding:15px; border-radius:12px; border:1px solid #e2e8f0;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                    <span style="font-size:14px; font-weight:600; color:var(--danger);"><i class="fa-solid fa-triangle-exclamation"></i> 세부 불량 내역 (선택)</span>
+                    <button class="btn-small" onclick="addHistDefectRow()" style="background:var(--white); border:1px solid #cbd5e1; color:var(--dark);">+ 불량 추가</button>
+                </div>
+                <table style="width:100%; border-collapse:collapse;"><tbody id="histDefectBody"></tbody></table>
+            </div>
+            <label style="font-size:12px; color:var(--gray); margin-top:15px; display:block;">비고 (기타 특이사항)</label>
+            <input id="histNote" class="form-control" placeholder="입력">
+            <div class="modal-btns"><button class="btn-cancel" onclick="document.getElementById('historyModal').style.display='none'">취소</button><button class="btn-save" onclick="saveHistory()">생산 내역 저장하기</button></div>
+        </div>
+    </div>
+    
+    <div class="modal-overlay" id="qrModal" style="display:none;"><div class="modal" style="text-align:center;"><h3>QR Code</h3><div id="qrcode" style="display:flex; justify-content:center; margin:20px;"></div><p id="qrDesc"></p><button class="btn-header" style="width:100%; justify-content:center;" onclick="document.getElementById('qrModal').style.display='none'">닫기</button></div></div>
+    <div class="modal-overlay" id="ddayModal" style="display:none;"><div class="modal"><h2>D-Day 관리</h2><input id="ddayName" class="form-control" placeholder="이름"><input type="date" id="ddayDate" class="form-control"><button class="btn-header primary" style="width:100%; margin-bottom:10px;" onclick="addDDay()">추가</button><ul id="ddayList" style="max-height:150px; overflow:auto; padding:0;"></ul><button class="btn-cancel" style="width:100%;" onclick="document.getElementById('ddayModal').style.display='none'">닫기</button></div></div>
+    <div class="modal-overlay" id="noticeModal" style="display:none;"><div class="modal"><h2>공지 관리</h2><input id="noticeContent" class="form-control" placeholder="내용"><button class="btn-header primary" style="width:100%; margin-bottom:10px;" onclick="addNotice()">추가</button><ul id="noticeList" style="max-height:150px; overflow:auto; padding:0;"></ul><button class="btn-cancel" style="width:100%;" onclick="document.getElementById('noticeModal').style.display='none'">닫기</button></div></div>
+    
+    <div class="modal-overlay" id="loginModal" style="display:none;">
+        <div class="modal">
+            <h2 style="margin-bottom:15px; text-align:center;">사내 시스템 로그인</h2>
+            <p style="margin-bottom:20px; text-align:center; color:#888; font-size:13px;">아이디와 비밀번호를 입력해 주세요.</p>
+            <input type="text" id="loginId" class="form-control" placeholder="아이디 (예: admin)" onkeydown="if(event.key==='Enter') document.getElementById('loginPassword').focus()">
+            <input type="password" id="loginPassword" class="form-control" placeholder="비밀번호" onkeydown="if(event.key==='Enter') handleLogin()">
+            <div class="modal-btns">
+                <button class="btn-cancel" onclick="document.getElementById('loginModal').style.display='none'">취소</button>
+                <button class="btn-save" onclick="handleLogin()">로그인</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="archiveModal" style="display:none;">
+        <div class="modal" style="max-width: 450px; width: 90%;">
+            <h2 style="margin-bottom: 20px;">자료실 파일 등록</h2>
+            <label style="font-size:12px; color:var(--gray);">폴더 타이틀 (기존 타이틀 선택 또는 직접 입력)</label>
+            <input type="text" id="archiveTitleInput" list="archiveTitleList" class="form-control" placeholder="예: 26년 상반기 회사 소개서">
+            <label style="font-size:12px; color:var(--gray); margin-top:10px;">파일 첨부</label>
+            <input type="file" id="archiveFileInput" class="form-control" style="padding: 10px; background: #fff;">
+            <div class="modal-btns">
+                <button class="btn-cancel" onclick="document.getElementById('archiveModal').style.display='none'">취소</button>
+                <button class="btn-save" onclick="submitArchiveFile()">등록하기</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay file-viewer-modal" id="fileViewerModal" style="display:none;"><div class="modal"><div style="display:flex; justify-content:space-between; align-items:center;"><h2 id="fileViewerTitle" style="margin:0; font-size:20px; word-break:break-all;">파일명</h2><button class="btn-cancel" style="padding:8px 20px; border-radius:12px;" onclick="document.getElementById('fileViewerModal').style.display='none'">닫기</button></div><div class="file-viewer-content" id="fileViewerContent"></div></div></div>
+    
+    <div class="modal-overlay" id="boardWriteModal" style="display:none;">
+        <div class="modal" style="max-width:500px;">
+            <h2 style="margin-bottom:20px;">게시글 작성 / 수정</h2>
+            <input type="hidden" id="boardWriteId">
+            <input type="text" id="boardWriteTitle" class="form-control" placeholder="제목을 입력하세요">
+            <div style="margin-bottom:10px;">
+                <input type="text" id="boardWriteAuthor" class="form-control" placeholder="작성자 이름" style="margin-bottom:0; width: 100%;">
+                <input type="hidden" id="boardWriteTeam" value=""> 
+            </div>
+            <textarea id="boardWriteContent" class="form-control" placeholder="내용을 자유롭게 적어주세요..." style="min-height:150px; resize:vertical;"></textarea>
+            <div class="modal-btns">
+                <button class="btn-cancel" onclick="document.getElementById('boardWriteModal').style.display='none'">취소</button>
+                <button class="btn-save" onclick="saveBoardPost()">등록하기</button>
+            </div>
+        </div>
+    </div>
+    
+    <div class="modal-overlay" id="boardViewModal" style="display:none;"><div class="modal" style="max-width:600px; width:90%;"><h2 id="viewBoardTitle" style="margin:top:0; margin-bottom:10px; word-break:break-all;">제목</h2><div style="color:var(--gray); font-size:13px; margin-bottom:20px; padding-bottom:15px; border-bottom:1px solid #e2e8f0; display:flex; justify-content:space-between;"><span><i class="fa-solid fa-user"></i> <span id="viewBoardAuthor"></span></span><span><i class="fa-solid fa-clock"></i> <span id="viewBoardDate"></span></span></div><div id="viewBoardContent" style="min-height:150px; max-height:400px; overflow-y:auto; line-height:1.6; white-space:pre-wrap; word-break:break-all; color:var(--dark);">내용</div><div class="modal-btns"><button class="btn-cancel" onclick="document.getElementById('boardViewModal').style.display='none'">닫기</button></div></div></div>
+
+    <div class="modal-overlay" id="globalSearchModal" style="display:none; align-items:flex-start; padding-top:10vh;">
+        <div class="global-search-box" style="background:var(--white); width:600px; max-width:90%; border-radius:16px; box-shadow:0 25px 50px -12px rgba(0,0,0,0.25); border:1px solid rgba(0,0,0,0.1); overflow:hidden; display:flex; flex-direction:column;">
+            <div style="display:flex; align-items:center; padding:20px; border-bottom:1px solid #e2e8f0;">
+                <i class="fa-solid fa-magnifying-glass" style="font-size:20px; color:var(--primary); margin-right:15px;"></i>
+                <input type="text" id="globalSearchInput" placeholder="무엇이든 검색하세요 (재고, 메뉴, 게시글 등)" style="flex:1; border:none; font-size:18px; outline:none; background:transparent; font-family:var(--font-main);">
+                <span style="font-size:12px; color:var(--gray); background:#f1f5f9; padding:4px 8px; border-radius:6px; font-weight:600;">ESC</span>
+            </div>
+            <ul id="globalSearchResults" style="list-style:none; padding:0; margin:0; max-height:400px; overflow-y:auto;"></ul>
+        </div>
+    </div>
+
+    <div id="customContextMenu" class="custom-context-menu" style="display:none; position:absolute; z-index:9999;">
+        <ul id="contextMenuList"></ul>
+    </div>
+
+    <div class="modal-overlay" id="supplierModal" style="display:none;">
+        <div class="modal" style="max-width: 450px; width: 95%;">
+            <h2 style="margin-bottom: 20px; color:#0284c7;"><i class="fa-solid fa-handshake"></i> 협력업체 등록/수정</h2>
+            <input type="hidden" id="supEditId">
+            <label style="font-size:12px; color:var(--gray);">업체명 (필수)</label>
+            <input type="text" id="supName" class="form-control" placeholder="예: 제일부품, 파낙토스 본사 등">
+            <div style="display:flex; gap:10px;">
+                <div style="flex:1;"><label style="font-size:12px; color:var(--gray);">담당자명</label><input type="text" id="supManager" class="form-control" placeholder="예: 홍길동 대리"></div>
+                <div style="flex:1.5;"><label style="font-size:12px; color:var(--gray);">연락처</label><input type="text" id="supPhone" class="form-control" placeholder="010-0000-0000"></div>
+            </div>
+            <label style="font-size:12px; color:var(--gray);">평균 납기일 (Lead Time)</label>
+            <input type="text" id="supLeadTime" class="form-control" placeholder="예: 발주 후 3일 소요, 1주일 소요">
+            <label style="font-size:12px; color:var(--gray);">주요 취급 품목 및 메모</label>
+            <input type="text" id="supMemo" class="form-control" placeholder="주로 어떤 부품을 사오는지 적어주세요">
+            <div class="modal-btns"><button class="btn-cancel" onclick="document.getElementById('supplierModal').style.display='none'">취소</button><button class="btn-save" style="background:#0284c7;" onclick="saveSupplier()">저장하기</button></div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="briefingModal" style="display:none;">
+        <div class="modal" style="max-width: 500px; width: 95%; background: linear-gradient(to bottom, #ffffff, #f8fafc);">
+            <div style="text-align:center; margin-bottom:20px;">
+                <div style="font-size:40px; margin-bottom:10px;">☕</div>
+                <h2 style="margin:0; color:var(--primary); font-size:22px;">좋은 아침입니다, <span id="briefingUserName"></span>님!</h2>
+                <p style="color:var(--gray); font-size:13px; margin-top:5px;">오늘의 파낙토스 업무 브리핑을 요약해 드립니다.</p>
+            </div>
+            <div id="briefingContent" style="display:flex; flex-direction:column; gap:10px;"></div>
+            <button class="btn-save" style="width:100%; margin-top:25px; height:45px; font-size:15px;" onclick="document.getElementById('briefingModal').style.display='none'">업무 시작하기</button>
+        </div>
+    </div>
+
+    <div id="dragDropOverlay" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.8); backdrop-filter: blur(10px); z-index: 99999; justify-content: center; align-items: center; color: white; border: 6px dashed #4361ee; box-sizing: border-box;">
+        <div class="drag-drop-content" style="text-align: center; pointer-events: none;">
+            <i class="fa-solid fa-cloud-arrow-up" style="font-size: 90px; color: #4cc9f0; margin-bottom: 25px;"></i>
+            <h2 style="color: white; margin-bottom: 10px;">여기에 파일을 놓으세요</h2>
+            <p style="color: #cbd5e1;">사내 자료실에 즉시 퀵(Quick) 업로드됩니다.</p>
+        </div>
+    </div>
+
+    <script>
+        window.addEventListener('DOMContentLoaded', () => {
+            const originalSwitchPage = window.switchPage;
+            if(typeof originalSwitchPage === 'function') {
+                window.switchPage = function(pageId, element) {
+                    originalSwitchPage(pageId, element);
+                    const isDash = (pageId === 'dashboard');
+                    const kpi = document.getElementById('kpiSection');
+                    const mkpi = document.getElementById('miniKpiSection');
+                    const split = document.getElementById('dashboardSplit');
+                    
+                    if(kpi) kpi.style.setProperty('display', isDash ? 'grid' : 'none', 'important');
+                    if(mkpi) mkpi.style.setProperty('display', isDash ? 'flex' : 'none', 'important');
+                    if(split) split.style.setProperty('display', isDash ? 'flex' : 'none', 'important');
+                };
+            }
+        });
+    </script>
+    <script defer src="/static/js/main.js"></script>
+<div class="modal-overlay" id="kpiItemSearchModal" style="display:none; z-index:10000;">
+        <div class="modal" style="max-width: 500px; width: 95%;">
+            <h2 style="margin-bottom: 15px; font-size:18px; color:var(--primary);"><i class="fa-solid fa-box-open"></i> 품목 검색</h2>
+            <div class="search-wrapper" style="margin-bottom:15px; width:100%;">
+                <i class="fa-solid fa-magnifying-glass search-icon"></i>
+                <input type="text" id="kpiItemSearchInput" class="search-input" placeholder="품목명 또는 코드를 입력하세요..." onkeyup="filterKpiItemSearch()" style="width:100%;">
+            </div>
+            <div style="max-height: 300px; overflow-y: auto; border: 1px solid #e2e8f0; border-radius: 8px; background: #fff; position: relative;">
+                <table style="width: 100%; border-collapse: separate; border-spacing: 0; text-align: left; font-size: 13px;">
+                    <thead style="position: sticky; top: 0; z-index: 100;">
+                        <tr>
+                            <th style="padding: 10px; color:#475569; background: #f8fafc !important; border-bottom: 2px solid #cbd5e1 !important; position: sticky; top: 0; z-index: 100;">품목코드</th>
+                            <th style="padding: 10px; color:#475569; background: #f8fafc !important; border-bottom: 2px solid #cbd5e1 !important; position: sticky; top: 0; z-index: 100;">품목명</th>
+                            <th style="padding: 10px; text-align:center; width:60px; background: #f8fafc !important; border-bottom: 2px solid #cbd5e1 !important; position: sticky; top: 0; z-index: 100;">선택</th>
+                        </tr>
+                    </thead>
+                    <tbody id="kpiItemSearchBody">
+                    </tbody>
+                </table>
+            </div>
+            <div class="modal-btns" style="margin-top:20px;">
+                <button class="btn-cancel" onclick="document.getElementById('kpiItemSearchModal').style.display='none'">닫기</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="invItemSearchModal" style="display:none; z-index:10000;">
+        <div class="modal" style="max-width: 500px; width: 95%;">
+            <h2 style="margin-bottom: 15px; font-size:18px; color:var(--primary);"><i class="fa-solid fa-boxes-stacked"></i> 전체 품목 목록</h2>
+            <div class="search-wrapper" style="margin-bottom:15px; width:100%;">
+                <i class="fa-solid fa-magnifying-glass search-icon"></i>
+                <input type="text" id="invItemSearchInput" class="search-input" placeholder="품목명 또는 코드를 입력하세요..." onkeyup="filterInvItemSearch()" style="width:100%;">
+            </div>
+            <div style="max-height: 300px; overflow-y: auto; border: 1px solid #e2e8f0; border-radius: 8px; background: #fff; position: relative;">
+                <table style="width: 100%; border-collapse: separate; border-spacing: 0; text-align: left; font-size: 13px;">
+                    <thead style="position: sticky; top: 0; z-index: 100;">
+                        <tr>
+                            <th style="padding: 10px; color:#475569; background: #f8fafc !important; border-bottom: 2px solid #cbd5e1 !important; position: sticky; top: 0; z-index: 100;">품목코드</th>
+                            <th style="padding: 10px; color:#475569; background: #f8fafc !important; border-bottom: 2px solid #cbd5e1 !important; position: sticky; top: 0; z-index: 100;">품목명</th>
+                            <th style="padding: 10px; text-align:center; width:60px; background: #f8fafc !important; border-bottom: 2px solid #cbd5e1 !important; position: sticky; top: 0; z-index: 100;">조회</th>
+                        </tr>
+                    </thead>
+                    <tbody id="invItemSearchBody">
+                    </tbody>
+                </table>
+            </div>
+            <div class="modal-btns" style="margin-top:20px;">
+                <button class="btn-cancel" onclick="document.getElementById('invItemSearchModal').style.display='none'">닫기</button>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
