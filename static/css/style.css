@@ -24,6 +24,8 @@ td, .kpi-value, .feat-qty, .calc-display { font-variant-numeric: tabular-nums !i
 .sidebar { width: 280px; background: linear-gradient(160deg, rgba(16, 24, 39, 0.95) 0%, rgba(30, 41, 59, 0.98) 100%) !important; backdrop-filter: blur(15px) !important; -webkit-backdrop-filter: blur(15px) !important; border-right: 1px solid rgba(255, 255, 255, 0.05); color: #ffffff; display: flex; flex-direction: column; padding: 40px 20px; flex-shrink: 0; z-index: 100; box-shadow: 5px 0 25px rgba(0,0,0,0.05); overflow-y: auto; }
 .logo { display: flex; align-items: center; justify-content: center; gap: 15px; margin-bottom: 30px; padding: 0 10px; cursor: pointer; }
 .logo img { width: 150px; height: auto; object-fit: contain; filter: drop-shadow(0 0 15px rgba(67, 97, 238, 0.4)); }
+.logo-text { font-size: 19px; font-weight: 800; letter-spacing: 2px; line-height: 1.35;
+             text-align: center; color: #fff; }
 .mobile-header span { display: none; }
 
 /* D-Day 위젯 */
@@ -269,6 +271,7 @@ tr:has(.chk-select:checked) td { background-color: rgba(67, 97, 238, 0.08) !impo
     .mobile-header button:hover { transform: scale(1.1); }
     .sidebar.collapsed { width: 80px; padding: 40px 15px; }
     .sidebar.collapsed .logo img { width: 40px; margin-left: -5px; }
+    .sidebar.collapsed .logo-text { font-size: 11px; letter-spacing: 0; }
     .sidebar.collapsed .d-day-widget, .sidebar.collapsed .submenu { display: none !important; }
     .sidebar.collapsed .mobile-header { justify-content: center; }
     .sidebar.collapsed .menu-item { font-size: 0; justify-content: center; padding: 14px 0; }
