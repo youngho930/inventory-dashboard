@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>PANAXTOS Inventory System</title>
+    <title>Inventory System</title>
     <link rel="manifest" href="/manifest.json">
     <meta name="theme-color" content="#4361ee">
 
@@ -449,7 +449,7 @@
                 <option value="mini">미니 카드 (소형)</option>
             </select>
             <label style="font-size:12px; color:var(--gray);">대시보드 표시명</label>
-            <input type="text" id="kpiName" class="form-control" placeholder="표시명 (예: S26 밴드)">
+            <input type="text" id="kpiName" class="form-control" placeholder="표시명 (예: 밴드형 기기 A)">
             <label style="font-size:12px; color:var(--gray);">이카운트 품목코드</label>
             <div style="display:flex; gap:5px; margin-bottom:15px;">
                 <input type="text" id="kpiCode" class="form-control" placeholder="이카운트 품목코드 (예: FP-105)" style="margin-bottom:0; flex:1;">
@@ -463,7 +463,7 @@
             <label style="font-size:12px; color:var(--gray);">목표 안전재고 수량</label>
             <input type="number" id="kpiSafeQty" class="form-control" placeholder="안전재고 수량 (예: 100)">
             <label style="font-size:12px; color:var(--gray);">아이콘 이미지 파일 (선택)</label>
-            <input type="text" id="kpiImg" class="form-control" placeholder="이미지 파일명 (예: s26.png)">
+            <input type="text" id="kpiImg" class="form-control" placeholder="이미지 파일명 (예: icons/band.svg)">
             
             <button class="btn-save" style="width:100%; margin-bottom:15px; background:linear-gradient(135deg, var(--success), var(--primary));" onclick="saveKpi()">추가 / 수정</button>
             <ul id="kpiList" style="max-height:200px; overflow-y:auto; padding:0; list-style:none; border-top:1px solid #e2e8f0; padding-top:10px;"></ul>
@@ -487,7 +487,7 @@
             <div style="display:flex; gap:10px;">
                 <div style="flex:2;">
                     <label style="font-size:12px; color:var(--gray);">구매처 (업체명)</label>
-                    <input type="text" id="bomSupplier" class="form-control" placeholder="예: 파낙토스 등 (선택사항)">
+                    <input type="text" id="bomSupplier" class="form-control" placeholder="예: 협력사명 등 (선택사항)">
                 </div>
                 <div style="flex:1;">
                     <label style="font-size:12px; color:var(--primary); font-weight:bold;">소요량</label>
@@ -615,7 +615,7 @@
             <h2 style="margin-bottom: 20px;">입고 내역 등록/수정</h2>
             <input type="hidden" id="incEditId">
             <label style="font-size:12px; color:var(--gray);">입고 일자</label><input type="date" id="incDate" class="form-control">
-            <label style="font-size:12px; color:var(--gray);">업체명 (구매처)</label><input type="text" id="incSupplier" class="form-control" placeholder="예: 파낙토스">
+            <label style="font-size:12px; color:var(--gray);">업체명 (구매처)</label><input type="text" id="incSupplier" class="form-control" placeholder="예: 협력사명">
             <label style="font-size:12px; color:var(--gray);">품목명 (이카운트 자동완성 지원)</label><input type="text" id="incProduct" list="inventoryDatalist" class="form-control" placeholder="품목 검색 및 입력">
             <label style="font-size:12px; color:var(--gray);">수량</label><input type="number" id="incQty" class="form-control" placeholder="수량 입력">
             <label style="font-size:12px; color:var(--gray);">비고</label><input type="text" id="incNote" class="form-control" placeholder="비고 입력">
@@ -775,7 +775,7 @@
             <h2 style="margin-bottom: 20px; color:#0284c7;"><i class="fa-solid fa-handshake"></i> 협력업체 등록/수정</h2>
             <input type="hidden" id="supEditId">
             <label style="font-size:12px; color:var(--gray);">업체명 (필수)</label>
-            <input type="text" id="supName" class="form-control" placeholder="예: 제일부품, 파낙토스 본사 등">
+            <input type="text" id="supName" class="form-control" placeholder="예: 제일부품, 협력사명 등">
             <div style="display:flex; gap:10px;">
                 <div style="flex:1;"><label style="font-size:12px; color:var(--gray);">담당자명</label><input type="text" id="supManager" class="form-control" placeholder="예: 홍길동 대리"></div>
                 <div style="flex:1.5;"><label style="font-size:12px; color:var(--gray);">연락처</label><input type="text" id="supPhone" class="form-control" placeholder="010-0000-0000"></div>
@@ -793,7 +793,7 @@
             <div style="text-align:center; margin-bottom:20px;">
                 <div style="font-size:40px; margin-bottom:10px;">☕</div>
                 <h2 style="margin:0; color:var(--primary); font-size:22px;">좋은 아침입니다, <span id="briefingUserName"></span>님!</h2>
-                <p style="color:var(--gray); font-size:13px; margin-top:5px;">오늘의 파낙토스 업무 브리핑을 요약해 드립니다.</p>
+                <p style="color:var(--gray); font-size:13px; margin-top:5px;">오늘의 업무 브리핑을 요약해 드립니다.</p>
             </div>
             <div id="briefingContent" style="display:flex; flex-direction:column; gap:10px;"></div>
             <button class="btn-save" style="width:100%; margin-top:25px; height:45px; font-size:15px;" onclick="document.getElementById('briefingModal').style.display='none'">업무 시작하기</button>

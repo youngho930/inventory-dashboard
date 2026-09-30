@@ -200,7 +200,7 @@ function renderDynamicKpiCards(inventoryItems) {
         const badgeDisplay = isShort ? 'inline-block' : 'none';
         const cardStyle = isShort ? 'border-color: var(--danger) !important;' : '';
 
-        // 이름 뒤에 창고명이 있다면 표시해줍니다 (예: S26 밴드 [공장창고])
+        // 이름 뒤에 창고명이 있다면 표시해줍니다 (예: 밴드형 기기 A [공장창고])
         const displayName = kpi.warehouse ? `${kpi.name} <span style="font-size:11px; color:var(--primary);">[${kpi.warehouse}]</span>` : kpi.name;
 
         if (kpi.type === 'mini') {

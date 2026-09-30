@@ -134,7 +134,7 @@ def index(): return render_template('dashboard.html')
 
 @app.route('/manifest.json')
 def serve_manifest():
-    return jsonify({ "name": "PANAXTOS Inventory", "short_name": "재고관리", "start_url": "/", "display": "standalone", "background_color": "#f8f9fa", "theme_color": "#4361ee", "icons": [ { "src": "/static/logo.png", "sizes": "192x192", "type": "image/png" } ] })
+    return jsonify({ "name": "Inventory System", "short_name": "재고관리", "start_url": "/", "display": "standalone", "background_color": "#f8f9fa", "theme_color": "#4361ee" })
 
 @app.route('/api/auth/login', methods=['POST'])
 def auth_login():
@@ -464,8 +464,8 @@ def manage_kpi():
         data = load_json(KPI_FILE)
         if not data:
             data = [
-                {"id": 1, "name": "S26 밴드", "code": "FP-105", "safe_qty": 100, "img": "s26.png"},
-                {"id": 2, "name": "MW 키오스크", "code": "MM-027", "safe_qty": 10, "img": "mw.png"}
+                {"id": 1, "name": "밴드형 기기 A", "code": "FP-105", "safe_qty": 100, "img": "icons/band.svg"},
+                {"id": 2, "name": "키오스크 A", "code": "MM-027", "safe_qty": 10, "img": "icons/kiosk-a.svg"}
             ]
             save_json(KPI_FILE, data)
         return jsonify(data)
