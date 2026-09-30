@@ -208,9 +208,10 @@ function renderDynamicKpiCards(inventoryItems) {
             miniKpiSection.insertAdjacentHTML('beforeend', html);
         } 
         else {
-            // 글자 칸과 아이콘 칸을 나눠 배치 (아이콘이 글자를 가리지 않게). 아이콘은 img 가 있을 때만.
+            // 아이콘은 카드에 하나만 두고, CSS 가 카드 폭에 따라 위치만 바꾼다
+            // (넓으면 오른쪽 큰 아이콘, 좁으면 제품명 앞 작은 아이콘). 아이콘은 img 가 있을 때만.
             const icon = kpi.img ? `<div class="kpi-icon-wrap"><img class="kpi-icon" src="/static/${kpi.img}" alt="" onerror="this.parentElement.style.display='none'" loading="lazy"></div>` : '';
-            const html = `<div class="kpi-card" style="${cardStyle}"><div class="kpi-text"><span class="kpi-title">${displayName}</span><div class="kpi-value">${totalQty.toLocaleString()}</div><div class="kpi-trend">안전재고 ${kpi.safe_qty} <span class="badge-danger" style="display:${badgeDisplay};">부족</span></div></div>${icon}</div>`;
+            const html = `<div class="kpi-card" style="${cardStyle}"><div class="kpi-body"><div class="kpi-title-row">${icon}<span class="kpi-title">${displayName}</span></div><div class="kpi-value">${totalQty.toLocaleString()}</div><div class="kpi-trend">안전재고 ${kpi.safe_qty} <span class="badge-danger" style="display:${badgeDisplay};">부족</span></div></div></div>`;
             kpiSection.insertAdjacentHTML('beforeend', html);
         }
     });
