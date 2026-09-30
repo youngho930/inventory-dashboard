@@ -84,7 +84,17 @@ input[type="checkbox"]#darkModeToggle:checked::after { transform: translateX(18p
 [data-theme="dark"] .kpi-card, [data-theme="dark"] .mini-kpi-container, [data-theme="dark"] .featured-card { background: var(--bg-card); border-color: var(--border-color) !important; }
 
 /* 대형 KPI 카드 */
-.kpi-card { border-radius: var(--radius-lg); padding: 25px; display: flex; flex-direction: column; justify-content: space-between; height: 210px; }
+/* 글자 칸(왼쪽) + 아이콘 칸(오른쪽). 아이콘은 글자를 절대 덮지 않는다.
+   카드 자신을 크기 기준(container)으로 삼아, 카드가 좁아지면 아이콘을 줄이거나 숨긴다 (글자 우선). */
+.kpi-card { border-radius: var(--radius-lg); padding: 25px; display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 12px; min-height: 210px; container-type: inline-size; }
+.kpi-text { display: flex; flex-direction: column; min-width: 0; z-index: 2; }
+.kpi-text .kpi-title { word-break: keep-all; overflow-wrap: anywhere; } /* 한글은 띄어쓰기 단위로 줄바꿈 */
+.kpi-text .kpi-title span { white-space: nowrap; } /* [창고명] 은 한 덩어리로 */
+.kpi-text .kpi-value { margin-top: auto; } /* 수량·안전재고를 카드 아래쪽에 붙여, 아이콘·제목 줄 수와 상관없이 같은 높이에 */
+.kpi-icon-wrap { width: min(34cqi, 120px); align-self: center; display: flex; justify-content: center; }
+.kpi-icon { width: 100%; height: auto; max-height: 96px; object-fit: contain; display: block; }
+@container (max-width: 179px) { .kpi-icon-wrap { width: min(24cqi, 48px); } }
+@container (max-width: 149px) { .kpi-icon-wrap { display: none; } } /* 카드 안쪽 폭 기준 (테두리·여백 제외) */
 .kpi-card:hover { transform: translateY(-6px) scale(1.01) !important; box-shadow: 0 20px 40px rgba(67, 97, 238, 0.08) !important; border-color: rgba(67, 97, 238, 0.3) !important; }
 .mini-kpi-container { display: flex; justify-content: space-between; align-items: center; border-radius: 12px; padding: 15px 25px 15px 30px; flex: 1; margin-bottom: 0; }
 .mini-kpi-container::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 5px; background: #7209b7; }
@@ -297,7 +307,7 @@ tr:has(.chk-select:checked) td { background-color: rgba(67, 97, 238, 0.08) !impo
     .header-controls::-webkit-scrollbar { display: none; } 
     .header-controls button { white-space: nowrap; flex-shrink: 0; padding: 8px 16px; font-size: 13px; }
     .kpi-container { grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px; }
-    .kpi-card { padding: 15px; height: auto; min-height: 110px; flex-direction: column; align-items: flex-start;}
+    .kpi-card { padding: 15px; min-height: 110px; }
     .kpi-title { font-size: 13px; }
     .kpi-img-icon { width: 35px; height: 35px; position: absolute; right: 10px; bottom: 15px; opacity: 0.2; transform: none !important; }
     .kpi-value { font-size: 22px; margin-top: 2px; }

@@ -130,7 +130,7 @@ def get_valid_session(force_renew=False):
     return server_session["id"]
 
 @app.route('/')
-def index(): return render_template('dashboard.html')
+def index(): return render_template('dashboard.html', demo_mode=DEMO_MODE)
 
 @app.route('/manifest.json')
 def serve_manifest():

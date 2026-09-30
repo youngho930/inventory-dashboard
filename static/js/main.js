@@ -208,7 +208,9 @@ function renderDynamicKpiCards(inventoryItems) {
             miniKpiSection.insertAdjacentHTML('beforeend', html);
         } 
         else {
-            const html = `<div class="kpi-card" style="${cardStyle}"><div class="kpi-header"><span class="kpi-title">${displayName}</span><img src="/static/${kpi.img}" onerror="this.style.display='none'" loading="lazy"></div><div class="kpi-value">${totalQty.toLocaleString()}</div><div class="kpi-trend">안전재고 ${kpi.safe_qty} <span class="badge-danger" style="display:${badgeDisplay};">부족</span></div></div>`;
+            // 글자 칸과 아이콘 칸을 나눠 배치 (아이콘이 글자를 가리지 않게). 아이콘은 img 가 있을 때만.
+            const icon = kpi.img ? `<div class="kpi-icon-wrap"><img class="kpi-icon" src="/static/${kpi.img}" alt="" onerror="this.parentElement.style.display='none'" loading="lazy"></div>` : '';
+            const html = `<div class="kpi-card" style="${cardStyle}"><div class="kpi-text"><span class="kpi-title">${displayName}</span><div class="kpi-value">${totalQty.toLocaleString()}</div><div class="kpi-trend">안전재고 ${kpi.safe_qty} <span class="badge-danger" style="display:${badgeDisplay};">부족</span></div></div>${icon}</div>`;
             kpiSection.insertAdjacentHTML('beforeend', html);
         }
     });
@@ -380,11 +382,14 @@ async function addDDay() { const n=document.getElementById('ddayName').value.tri
 async function deleteDDay(id) { await fetch(`/api/dday?id=${id}`,{method:'DELETE'}); loadDDays(); showToast('삭제됨'); }
 
 let noticeDataCache = [];
+const DEMO_NOTICE = "데모용 가상 데이터로 표시됩니다. 실제 회사 데이터는 포함되어 있지 않습니다.";
 async function loadNotices() {
     try {
         const r = await fetch('/api/notice'); noticeDataCache = await r.json();
         const ticker = document.getElementById('newsTickerText');
-        if(ticker) ticker.innerHTML = noticeDataCache.length > 0 ? noticeDataCache.map(n=>`📢 ${n.content}`).join(' &nbsp;&nbsp;|&nbsp;&nbsp; ') : "📢 등록된 상단 공지사항이 없습니다.";
+        // 데모 모드에서는 상단 안내를 데모 문구로 (실제 ERP 연결 모드는 등록된 공지 그대로)
+        if(ticker && document.body.dataset.demo === 'true') ticker.innerHTML = `📢 ${DEMO_NOTICE}`;
+        else if(ticker) ticker.innerHTML = noticeDataCache.length > 0 ? noticeDataCache.map(n=>`📢 ${n.content}`).join(' &nbsp;&nbsp;|&nbsp;&nbsp; ') : "📢 등록된 상단 공지사항이 없습니다.";
         const list = document.getElementById('noticeList');
         if(list) list.innerHTML = noticeDataCache.map(n=>`<li style="padding:10px;border-bottom:1px solid #eee;display:flex;justify-content:space-between;"><span>${n.content}</span><button class="btn-small admin-only" style="background:var(--danger);color:white;" onclick="deleteNotice(${n.id})">×</button></li>`).join('');
         updateUIForAdmin();

@@ -51,19 +51,6 @@
             border-left-color: var(--primary) !important;
         }
 
-        .kpi-card img {
-            width: 80px !important; 
-            height: 80px !important; 
-            object-fit: contain !important; 
-            transform: scale(2.2) !important; 
-            transform-origin: right bottom !important; 
-            background: transparent !important; 
-            z-index: 10 !important; 
-            position: absolute !important; 
-            bottom: 10px !important; 
-            right: -5px !important;
-        }
-
         /* 📱 모바일 버전 대응 */
         @media screen and (max-width: 768px) {
             .table-container { overflow-x: auto !important; display: block !important; width: 100% !important; -webkit-overflow-scrolling: touch; padding-bottom: 10px; }
@@ -91,15 +78,6 @@
                 left: auto !important;
                 z-index: auto !important;
             }
-
-            /* 📱 모바일 버전: KPI 이미지 얌전하게 축소 */
-            .kpi-card img {
-                width: 45px !important;
-                height: 45px !important;
-                transform: scale(1.6) !important;
-                bottom: 8px !important;
-                right: 2px !important;
-            }
         }
 /* =======================================================
        💡 삭제 경고창 무조건 최상단 노출 (캐시 무시 강제 적용)
@@ -110,7 +88,7 @@
     }
     </style>
 </head>
-<body>
+<body data-demo="{{ 'true' if demo_mode else 'false' }}">
 
     <datalist id="inventoryDatalist"></datalist>
     <datalist id="archiveTitleList"></datalist>
