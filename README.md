@@ -135,6 +135,7 @@ DEMO_MODE=true
 - 관리자 비밀번호는 평문 대신 SHA-256 해시로 비교합니다
 - 협력업체명, 담당자, 연락처, 품번, 단가 등 실제 데이터는 모두 가상의 값으로 교체했습니다
 - 실제 업로드 파일과 운영 로그는 제거했습니다
+- 운영 중 쌓이는 기록 파일은 저장소에 포함하지 않습니다 (`system_audit_log.json`, `archive_meta.json`, `defect_records.json`, `production_history.json`, `production_records.json` — 없으면 앱이 빈 파일로 새로 만듭니다)
 - 회사 로고와 상표는 제거했습니다
 - ERP 접속 정보 없이도 확인할 수 있도록 데모 모드를 추가했습니다
 

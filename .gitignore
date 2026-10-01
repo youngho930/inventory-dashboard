@@ -14,3 +14,10 @@ uploads/*
 # 편집기
 .vscode/
 .idea/
+
+# 서버 운영 중에 쌓이는 기록 (저장소에 포함하지 않음)
+/system_audit_log.json
+/archive_meta.json
+/defect_records.json
+/production_history.json
+/production_records.json
